@@ -271,4 +271,26 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('📞 Готов к обработке запросов...\n');
 });
 
+// Webhook для получения статуса звонков от Zadarma
+app.post('/webhook/call-status', async (req, res) => {
+    try {
+        console.log('📞 Получен webhook от Zadarma:', req.body);
+        
+        // Отправляем данные в n8n для обработки
+        const n8nWebhookUrl = 'https://ваш-n8n-домен.com/webhook/webhook-callback-response';
+        
+        await fetch(n8nWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        
+        res.json({ status: 'success', message: 'Webhook processed' });
+    } catch (error) {
+        console.error('❌ Ошибка обработки webhook:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = app;
+
