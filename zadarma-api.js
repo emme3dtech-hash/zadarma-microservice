@@ -10,7 +10,7 @@ class ZadarmaAPI {
         this.apiUrl = sandbox ? 'api-sandbox.zadarma.com' : 'api.zadarma.com';
     }
 
-    generateSignature(method, params = {}) {
+    generateSignature(method, path, params = {}) {
         // 1. Сортируем параметры по ключу в алфавитном порядке
         const sortedKeys = Object.keys(params).sort();
         const sortedParams = {};
@@ -24,11 +24,12 @@ class ZadarmaAPI {
         // 3. Создаем MD5 хеш от query string
         const md5Hash = crypto.createHash('md5').update(queryString).digest('hex');
         
-        // 4. Создаем строку для подписи: method + queryString + md5(queryString)
-        const stringToSign = method + queryString + md5Hash;
+        // 4. Создаем строку для подписи: path + queryString + md5(queryString)
+        const stringToSign = path + queryString + md5Hash;
         
         console.log('=== ZADARMA AUTH DEBUG ===');
         console.log('Method:', method);
+        console.log('Path:', path);
         console.log('Sorted params:', sortedParams);
         console.log('Query string:', queryString);
         console.log('MD5 hash:', md5Hash);
@@ -50,7 +51,7 @@ class ZadarmaAPI {
 
     makeRequest(method, path, params = {}) {
         return new Promise((resolve, reject) => {
-            const signature = this.generateSignature(method, params);
+            const signature = this.generateSignature(method, path, params);
             
             let requestPath = path;
             let postData = '';
