@@ -158,4 +158,26 @@ class ZadarmaAPI {
     }
 }
 
+async getStatistics(params = {}) {
+  try {
+    console.log('📊 Запрос статистики...');
+    
+    const result = await api({
+      api_method: '/v1/statistics/',
+      params: params
+    });
+    
+    console.log('✅ Результат статистики:', result);
+    
+    return {
+      status: 200,
+      data: result
+    };
+  } catch (error) {
+    console.error('❌ Ошибка получения статистики:', error);
+    throw new Error('Ошибка получения статистики: ' + error.message);
+  }
+}
+
 module.exports = ZadarmaAPI;
+
