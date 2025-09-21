@@ -11,20 +11,26 @@ class ZadarmaAPI {
     }
 
     /**
-     * ИСПРАВЛЕННАЯ генерация подписи для авторизации Zadarma API
+     * ПРАВИЛЬНАЯ генерация подписи для Zadarma API (по официальной документации)
      */
     generateSignature(method, path, params = {}) {
-        // Сортируем параметры по ключам
+        // 1. Сортируем параметры по ключам
         const sortedKeys = Object.keys(params).sort();
         const sortedParams = {};
         sortedKeys.forEach(key => {
             sortedParams[key] = params[key];
         });
         
+        // 2. Формируем query string
         const queryString = querystring.stringify(sortedParams);
-        const stringToSign = method + path + (queryString ? queryString : '') + this.key;
         
-        // Создаем HMAC SHA1 подпись
+        // 3. Создаем MD5 хеш от query string (КЛЮЧЕВОЕ ОТЛИЧИЕ!)
+        const md5Hash = crypto.createHash('md5').update(queryString).digest('hex');
+        
+        // 4. Формируем строку для подписи: method + path + queryString + md5Hash + key
+        const stringToSign = method + path + queryString + md5Hash + this.key;
+        
+        // 5. Создаем HMAC SHA1 подпись
         return crypto
             .createHmac('sha1', this.secret)
             .update(stringToSign, 'utf8')
