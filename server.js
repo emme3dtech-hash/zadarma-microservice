@@ -291,46 +291,8 @@ app.post('/webhook/call-status', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-/**
- * Получение статистики звонков
- */
-app.get('/api/statistics', async (req, res) => {
-  try {
-    const { start, end, limit = 10 } = req.query;
-    
-    const params = {};
-    if (start) params.start = start;
-    if (end) params.end = end;
-    if (limit) params.limit = limit;
-
-    console.log('📊 Запрос статистики с параметрами:', params);
-    
-    const result = await zadarma.getStatistics(params);
-    
-    if (result.data.status === 'success') {
-      res.json({
-        status: 'success',
-        data: result.data,
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      res.status(400).json({
-        status: 'error',
-        message: result.data.message || 'Ошибка получения статистики',
-        data: result.data,
-        timestamp: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    console.error('❌ Ошибка получения статистики:', error.message);
-    res.status(500).json({
-      status: 'error',
-      message: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
 
 module.exports = app;
+
 
 
