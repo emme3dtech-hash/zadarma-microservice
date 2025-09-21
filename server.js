@@ -7,11 +7,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Ваши API ключи Zadarma (замените на свои!)
-const API_KEY = '7083ddb1412389ca21a5';
-const API_SECRET = '94b05a1ae04308070adc';
+const API_KEY = process.env.API_KEY || '7083ddb1412389ca21a5';
+const API_SECRET = process.env.API_SECRET || '94b05a1ae04308070adc';
 
-sandbox = false
-const zadarma = new ZadarmaAPI(API_KEY, API_SECRET, true);
+
+const zadarma = new ZadarmaAPI(API_KEY, API_SECRET, false);
 
 // Middleware
 app.use(cors());
