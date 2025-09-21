@@ -11,10 +11,10 @@ class ZadarmaAPI {
     }
 
     /**
-     * ПРАВИЛЬНАЯ генерация подписи для Zadarma API (по официальной документации)
+     * ПРАВИЛЬНАЯ генерация подписи для Zadarma API (на основе Stack Overflow примера)
      */
     generateSignature(method, path, params = {}) {
-        // 1. Сортируем параметры по ключам
+        // 1. Сортируем параметры по ключам (alphabetical order)
         const sortedKeys = Object.keys(params).sort();
         const sortedParams = {};
         sortedKeys.forEach(key => {
@@ -24,17 +24,30 @@ class ZadarmaAPI {
         // 2. Формируем query string
         const queryString = querystring.stringify(sortedParams);
         
-        // 3. Создаем MD5 хеш от query string (КЛЮЧЕВОЕ ОТЛИЧИЕ!)
+        // 3. Создаем MD5 хеш от query string
         const md5Hash = crypto.createHash('md5').update(queryString).digest('hex');
         
-        // 4. Формируем строку для подписи: method + path + queryString + md5Hash + key
-        const stringToSign = method + path + queryString + md5Hash + this.key;
+        // 4. Формируем строку для подписи согласно документации:
+        // method + path + queryString + md5Hash + key
+        const stringToSign = method.toUpperCase() + path + queryString + md5Hash + this.key;
+        
+        console.log('Debug info:');
+        console.log('Method:', method.toUpperCase());
+        console.log('Path:', path);
+        console.log('QueryString:', queryString);
+        console.log('MD5 Hash:', md5Hash);
+        console.log('API Key:', this.key);
+        console.log('String to sign:', stringToSign);
         
         // 5. Создаем HMAC SHA1 подпись
-        return crypto
+        const signature = crypto
             .createHmac('sha1', this.secret)
             .update(stringToSign, 'utf8')
             .digest('base64');
+            
+        console.log('Generated signature:', signature);
+        
+        return signature;
     }
 
     /**
