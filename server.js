@@ -1,7 +1,6 @@
-// server.js
 const express = require('express');
 const cors = require('cors');
-const ZadarmaAPI = require('./zadarma-api');
+const { api } = require('zadarma');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,20 +9,14 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY;
 const API_SECRET = process.env.API_SECRET;
 
-// Проверяем наличие ключей
 if (!API_KEY || !API_SECRET) {
-    console.error('❌ ОШИБКА: API_KEY и API_SECRET должны быть установлены в переменных окружения!');
-    console.error('   Установите их в Railway Variables:');
-    console.error('   - API_KEY = ваш User Key от Zadarma');
-    console.error('   - API_SECRET = ваш Secret Key от Zadarma');
+    console.error('API_KEY и API_SECRET должны быть установлены в переменных окружения');
     process.exit(1);
 }
 
-console.log('🔑 API ключи загружены:');
-console.log('   API_KEY установлен:', !!API_KEY, `(${API_KEY ? API_KEY.length : 0} символов)`);
-console.log('   API_SECRET установлен:', !!API_SECRET, `(${API_SECRET ? API_SECRET.length : 0} символов)`);
-
-const zadarma = new ZadarmaAPI(API_KEY, API_SECRET, false);
+// Настройка переменных окружения для модуля zadarma
+process.env.ZADARMA_USER_KEY = API_KEY;
+process.env.ZADARMA_SECRET_KEY = API_SECRET;
 
 // Middleware
 app.use(cors());
@@ -36,24 +29,15 @@ app.use((req, res, next) => {
     next();
 });
 
-// ===== МАРШРУТЫ API =====
-
 // Главная страница
 app.get('/', (req, res) => {
     res.json({
         status: 'success',
         message: 'Zadarma Microservice запущен!',
-        version: '2.0.0',
-        api_keys_configured: {
-            api_key: !!API_KEY,
-            api_secret: !!API_SECRET
-        },
+        version: '1.0.0',
         endpoints: {
             balance: 'GET /api/balance',
             callback: 'POST /api/callback',
-            numbers: 'GET /api/numbers',
-            sms: 'POST /api/sms',
-            tariffs: 'GET /api/tariffs',
             health: 'GET /health'
         }
     });
@@ -65,34 +49,25 @@ app.get('/health', (req, res) => {
         status: 'OK',
         timestamp: new Date().toISOString(),
         api_key_set: !!API_KEY,
-        api_secret_set: !!API_SECRET,
-        api_key_length: API_KEY ? API_KEY.length : 0,
-        api_secret_length: API_SECRET ? API_SECRET.length : 0
+        api_secret_set: !!API_SECRET
     });
 });
 
 // Получить баланс
 app.get('/api/balance', async (req, res) => {
     try {
-        console.log('📊 Запрос баланса...');
-        const result = await zadarma.getBalance();
+        console.log('Запрос баланса...');
+        const result = await api({
+            api_method: '/v1/info/balance/'
+        });
         
-        if (result.data.status === 'success') {
-            res.json({
-                status: 'success',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            res.status(400).json({
-                status: 'error',
-                message: result.data.message || 'Неизвестная ошибка API',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        }
+        res.json({
+            status: 'success',
+            data: result,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        console.error('❌ Ошибка получения баланса:', error.message);
+        console.error('Ошибка получения баланса:', error.message);
         res.status(500).json({
             status: 'error',
             message: error.message,
@@ -104,7 +79,7 @@ app.get('/api/balance', async (req, res) => {
 // Инициировать обратный звонок
 app.post('/api/callback', async (req, res) => {
     try {
-        const { phone_number, contact_name, from_number } = req.body;
+        const { phone_number, contact_name } = req.body;
         
         if (!phone_number) {
             return res.status(400).json({
@@ -113,31 +88,27 @@ app.post('/api/callback', async (req, res) => {
             });
         }
 
-        console.log(`📞 Инициация обратного звонка на ${phone_number}`);
+        console.log(`Инициация обратного звонка на ${phone_number}`);
         
-        // Используем указанный номер или первый доступный
-        const fromNumber = from_number || 'auto';
+        const params = {
+            from: '380914911639',
+            to: phone_number
+        };
         
-        const result = await zadarma.requestCallback(fromNumber, phone_number, false);
+        const result = await api({
+            api_method: '/v1/request/callback/',
+            params: params
+        });
         
-        if (result.data.status === 'success') {
-            res.json({
-                status: 'success',
-                message: `Обратный звонок инициирован на номер ${phone_number}`,
-                contact_name: contact_name || 'Неизвестен',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            res.status(400).json({
-                status: 'error',
-                message: result.data.message || 'Ошибка инициации обратного звонка',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        }
+        res.json({
+            status: 'success',
+            message: `Обратный звонок инициирован на номер ${phone_number}`,
+            contact_name: contact_name || 'Неизвестен',
+            data: result,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        console.error('❌ Ошибка обратного звонка:', error.message);
+        console.error('Ошибка обратного звонка:', error.message);
         res.status(500).json({
             status: 'error',
             message: error.message,
@@ -146,153 +117,9 @@ app.post('/api/callback', async (req, res) => {
     }
 });
 
-// Получить список номеров
-app.get('/api/numbers', async (req, res) => {
-    try {
-        console.log('📋 Запрос списка номеров...');
-        const result = await zadarma.getNumbers();
-        
-        if (result.data.status === 'success') {
-            res.json({
-                status: 'success',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            res.status(400).json({
-                status: 'error',
-                message: result.data.message || 'Ошибка получения номеров',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        }
-    } catch (error) {
-        console.error('❌ Ошибка получения номеров:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
+const PORT_LISTEN = process.env.PORT || 3000;
+app.listen(PORT_LISTEN, '0.0.0.0', () => {
+    console.log(`Zadarma микросервис запущен на порту ${PORT_LISTEN}`);
+    console.log(`API Key установлен: ${!!API_KEY}`);
+    console.log(`API Secret установлен: ${!!API_SECRET}`);
 });
-
-// Отправить SMS
-app.post('/api/sms', async (req, res) => {
-    try {
-        const { number, message, caller_id } = req.body;
-        
-        if (!number || !message) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Не указан номер телефона или текст сообщения'
-            });
-        }
-
-        console.log(`📱 Отправка SMS на ${number}`);
-        const result = await zadarma.sendSMS(number, message, caller_id);
-        
-        if (result.data.status === 'success') {
-            res.json({
-                status: 'success',
-                message: `SMS отправлено на номер ${number}`,
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            res.status(400).json({
-                status: 'error',
-                message: result.data.message || 'Ошибка отправки SMS',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        }
-    } catch (error) {
-        console.error('❌ Ошибка отправки SMS:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// Получить тарифы
-app.get('/api/tariffs', async (req, res) => {
-    try {
-        console.log('💰 Запрос тарифов...');
-        const result = await zadarma.getTariffs();
-        
-        if (result.data.status === 'success') {
-            res.json({
-                status: 'success',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            res.status(400).json({
-                status: 'error',
-                message: result.data.message || 'Ошибка получения тарифов',
-                data: result.data,
-                timestamp: new Date().toISOString()
-            });
-        }
-    } catch (error) {
-        console.error('❌ Ошибка получения тарифов:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// Обработка 404
-app.use('*', (req, res) => {
-    res.status(404).json({
-        status: 'error',
-        message: 'Эндпоинт не найден',
-        available_endpoints: [
-            'GET /',
-            'GET /health',
-            'GET /api/balance',
-            'POST /api/callback',
-            'GET /api/numbers',
-            'POST /api/sms',
-            'GET /api/tariffs'
-        ]
-    });
-});
-
-// Запуск сервера
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('🚀 Zadarma Microservice запущен!');
-    console.log(`🌐 Сервер доступен: http://0.0.0.0:${PORT}`);
-    console.log(`📊 API документация: http://localhost:${PORT}`);
-    console.log('📞 Готов к обработке запросов...\n');
-});
-
-// Webhook для получения статуса звонков от Zadarma
-app.post('/webhook/call-status', async (req, res) => {
-    try {
-        console.log('📞 Получен webhook от Zadarma:', req.body);
-        
-        // Отправляем данные в n8n для обработки
-        const n8nWebhookUrl = 'https://ваш-n8n-домен.com/webhook/webhook-callback-response';
-        
-        await fetch(n8nWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(req.body)
-        });
-        
-        res.json({ status: 'success', message: 'Webhook processed' });
-    } catch (error) {
-        console.error('❌ Ошибка обработки webhook:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-module.exports = app;
-
-
-
