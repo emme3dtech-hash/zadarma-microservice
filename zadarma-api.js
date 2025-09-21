@@ -10,22 +10,34 @@ class ZadarmaAPI {
         this.apiUrl = sandbox ? 'api-sandbox.zadarma.com' : 'api.zadarma.com';
     }
 
-    /**
-     * Генерирует подпись для авторизации Zadarma API
-     */
     generateSignature(method, path, params = {}) {
-        const queryString = Object.keys(params).length > 0 ? querystring.stringify(params) : '';
+        const sortedKeys = Object.keys(params).sort();
+        const sortedParams = {};
+        sortedKeys.forEach(key => {
+            sortedParams[key] = params[key];
+        });
+        
+        const queryString = querystring.stringify(sortedParams);
         const stringToSign = method + path + queryString + this.key;
         
-        return crypto
+        console.log('=== DEBUG INFO ===');
+        console.log('Method:', method);
+        console.log('Path:', path);
+        console.log('QueryString:', queryString);
+        console.log('API Key:', this.key);
+        console.log('String to sign:', stringToSign);
+        
+        const signature = crypto
             .createHmac('sha1', this.secret)
             .update(stringToSign)
             .digest('base64');
+            
+        console.log('Generated signature:', signature);
+        console.log('=================');
+        
+        return signature;
     }
 
-    /**
-     * Выполняет HTTP запрос к Zadarma API
-     */
     makeRequest(method, path, params = {}) {
         return new Promise((resolve, reject) => {
             const signature = this.generateSignature(method, path, params);
@@ -70,9 +82,6 @@ class ZadarmaAPI {
         });
     }
 
-    /**
-     * Получает баланс аккаунта
-     */
     async getBalance() {
         try {
             const response = await this.makeRequest('GET', '/v1/info/balance/');
@@ -82,9 +91,6 @@ class ZadarmaAPI {
         }
     }
 
-    /**
-     * Инициирует обратный звонок
-     */
     async requestCallback(from, to, predicted = false) {
         try {
             const params = {
@@ -100,44 +106,12 @@ class ZadarmaAPI {
         }
     }
 
-    /**
-     * Получает информацию о номерах
-     */
     async getNumbers() {
         try {
             const response = await this.makeRequest('GET', '/v1/info/numbers/');
             return response;
         } catch (error) {
             throw new Error('Ошибка получения номеров: ' + error.message);
-        }
-    }
-
-    /**
-     * Отправляет SMS
-     */
-    async sendSMS(number, message) {
-        try {
-            const params = {
-                number: number,
-                message: message
-            };
-            
-            const response = await this.makeRequest('POST', '/v1/sms/send/', params);
-            return response;
-        } catch (error) {
-            throw new Error('Ошибка отправки SMS: ' + error.message);
-        }
-    }
-
-    /**
-     * Получает тарифы
-     */
-    async getTariffs() {
-        try {
-            const response = await this.makeRequest('GET', '/v1/tariff/');
-            return response;
-        } catch (error) {
-            throw new Error('Ошибка получения тарифов: ' + error.message);
         }
     }
 }
