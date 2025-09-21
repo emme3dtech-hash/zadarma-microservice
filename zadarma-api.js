@@ -1,141 +1,45 @@
 // zadarma-api.js
-const crypto = require('crypto');
-const https = require('https');
-const querystring = require('querystring');
+const { api } = require('zadarma');
 
 class ZadarmaAPI {
     constructor(key, secret, sandbox = false) {
         this.key = key;
         this.secret = secret;
-        this.apiUrl = sandbox ? 'api-sandbox.zadarma.com' : 'api.zadarma.com';
-    }
-
-    generateSignature(method, path, params = {}) {
-        // 1. Сортируем параметры по ключу в алфавитном порядке
-        const sortedKeys = Object.keys(params).sort();
-        const sortedParams = {};
-        sortedKeys.forEach(key => {
-            sortedParams[key] = params[key];
-        });
         
-        // 2. Создаем query string (аналогично http_build_query в PHP)
-        const queryString = querystring.stringify(sortedParams);
+        // Устанавливаем переменные окружения для модуля zadarma
+        process.env.ZADARMA_USER_KEY = key;
+        process.env.ZADARMA_SECRET_KEY = secret;
         
-        // 3. Создаем MD5 хеш от query string
-        const md5Hash = crypto.createHash('md5').update(queryString).digest('hex');
-        
-        // 4. Создаем строку для подписи: path + queryString + md5(queryString)
-        const stringToSign = path + queryString + md5Hash;
-        
-        console.log('=== ZADARMA AUTH DEBUG ===');
-        console.log('Method:', method);
-        console.log('Path:', path);
-        console.log('Sorted params:', sortedParams);
-        console.log('Query string:', queryString);
-        console.log('MD5 hash:', md5Hash);
-        console.log('String to sign:', stringToSign);
-        console.log('API Key:', this.key);
-        
-        // 5. Создаем HMAC SHA1 подпись с секретным ключом
-        const signature = crypto
-            .createHmac('sha1', this.secret)
-            .update(stringToSign)
-            .digest('base64');
-            
-        console.log('Generated signature:', signature);
-        console.log('Authorization header:', this.key + ':' + signature);
-        console.log('========================');
-        
-        return signature;
-    }
-
-    makeRequest(method, path, params = {}) {
-        return new Promise((resolve, reject) => {
-            const signature = this.generateSignature(method, path, params);
-            
-            let requestPath = path;
-            let postData = '';
-            
-            const options = {
-                hostname: this.apiUrl,
-                port: 443,
-                method: method,
-                headers: {
-                    'Authorization': this.key + ':' + signature,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            };
-
-            // Для GET запросов добавляем параметры в URL
-            if (method === 'GET' && Object.keys(params).length > 0) {
-                const queryString = querystring.stringify(params);
-                requestPath = path + '?' + queryString;
-            }
-            
-            // Для POST запросов добавляем параметры в body
-            if (method === 'POST' && Object.keys(params).length > 0) {
-                postData = querystring.stringify(params);
-                options.headers['Content-Length'] = Buffer.byteLength(postData);
-            }
-            
-            options.path = requestPath;
-            
-            console.log('=== REQUEST INFO ===');
-            console.log('URL:', `https://${this.apiUrl}${requestPath}`);
-            console.log('Method:', method);
-            console.log('Headers:', options.headers);
-            if (postData) console.log('Post data:', postData);
-            console.log('==================');
-
-            const req = https.request(options, (res) => {
-                let data = '';
-                
-                res.on('data', (chunk) => {
-                    data += chunk;
-                });
-                
-                res.on('end', () => {
-                    console.log('=== RESPONSE INFO ===');
-                    console.log('Status code:', res.statusCode);
-                    console.log('Response body:', data);
-                    console.log('====================');
-                    
-                    try {
-                        const jsonData = JSON.parse(data);
-                        resolve({
-                            status: res.statusCode,
-                            data: jsonData
-                        });
-                    } catch (error) {
-                        reject(new Error('Ошибка парсинга JSON: ' + error.message + '. Raw response: ' + data));
-                    }
-                });
-            });
-
-            req.on('error', (error) => {
-                reject(new Error('Ошибка запроса: ' + error.message));
-            });
-
-            // Отправляем POST данные, если есть
-            if (postData) {
-                req.write(postData);
-            }
-            
-            req.end();
-        });
+        console.log('🔧 ZadarmaAPI инициализирован:');
+        console.log('   Key установлен:', !!key, `(${key ? key.length : 0} символов)`);
+        console.log('   Secret установлен:', !!secret, `(${secret ? secret.length : 0} символов)`);
+        console.log('   Sandbox режим:', sandbox);
     }
 
     async getBalance() {
         try {
-            const response = await this.makeRequest('GET', '/v1/info/balance/');
-            return response;
+            console.log('📊 Запрос баланса через NPM модуль...');
+            
+            const result = await api({
+                api_method: '/v1/info/balance/'
+            });
+            
+            console.log('✅ Результат запроса баланса:', result);
+            
+            return {
+                status: 200,
+                data: result
+            };
         } catch (error) {
+            console.error('❌ Ошибка получения баланса:', error);
             throw new Error('Ошибка получения баланса: ' + error.message);
         }
     }
 
     async requestCallback(from, to, predicted = false) {
         try {
+            console.log(`📞 Запрос обратного звонка: ${from} -> ${to}`);
+            
             const params = {
                 from: from,
                 to: to
@@ -145,24 +49,47 @@ class ZadarmaAPI {
                 params.predicted = 'predicted';
             }
             
-            const response = await this.makeRequest('GET', '/v1/request/callback/', params);
-            return response;
+            const result = await api({
+                api_method: '/v1/request/callback/',
+                params: params
+            });
+            
+            console.log('✅ Результат обратного звонка:', result);
+            
+            return {
+                status: 200,
+                data: result
+            };
         } catch (error) {
+            console.error('❌ Ошибка обратного звонка:', error);
             throw new Error('Ошибка инициации обратного звонка: ' + error.message);
         }
     }
 
     async getNumbers() {
         try {
-            const response = await this.makeRequest('GET', '/v1/direct_numbers/');
-            return response;
+            console.log('📋 Запрос списка прямых номеров...');
+            
+            const result = await api({
+                api_method: '/v1/direct_numbers/'
+            });
+            
+            console.log('✅ Результат запроса номеров:', result);
+            
+            return {
+                status: 200,
+                data: result
+            };
         } catch (error) {
+            console.error('❌ Ошибка получения номеров:', error);
             throw new Error('Ошибка получения номеров: ' + error.message);
         }
     }
 
     async sendSMS(number, message, caller_id = null) {
         try {
+            console.log(`📱 Отправка SMS на ${number}: ${message.substring(0, 50)}...`);
+            
             const params = {
                 number: number,
                 message: message
@@ -172,19 +99,61 @@ class ZadarmaAPI {
                 params.caller_id = caller_id;
             }
             
-            const response = await this.makeRequest('POST', '/v1/sms/send/', params);
-            return response;
+            const result = await api({
+                http_method: 'POST',
+                api_method: '/v1/sms/send/',
+                params: params
+            });
+            
+            console.log('✅ Результат отправки SMS:', result);
+            
+            return {
+                status: 200,
+                data: result
+            };
         } catch (error) {
+            console.error('❌ Ошибка отправки SMS:', error);
             throw new Error('Ошибка отправки SMS: ' + error.message);
         }
     }
 
     async getTariffs() {
         try {
-            const response = await this.makeRequest('GET', '/v1/tariff/');
-            return response;
+            console.log('💰 Запрос тарифов...');
+            
+            const result = await api({
+                api_method: '/v1/tariff/'
+            });
+            
+            console.log('✅ Результат запроса тарифов:', result);
+            
+            return {
+                status: 200,
+                data: result
+            };
         } catch (error) {
+            console.error('❌ Ошибка получения тарифов:', error);
             throw new Error('Ошибка получения тарифов: ' + error.message);
+        }
+    }
+
+    async getSipNumbers() {
+        try {
+            console.log('📞 Запрос SIP номеров...');
+            
+            const result = await api({
+                api_method: '/v1/sip/'
+            });
+            
+            console.log('✅ Результат запроса SIP:', result);
+            
+            return {
+                status: 200,
+                data: result
+            };
+        } catch (error) {
+            console.error('❌ Ошибка получения SIP номеров:', error);
+            throw new Error('Ошибка получения SIP номеров: ' + error.message);
         }
     }
 }
