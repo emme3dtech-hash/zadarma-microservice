@@ -34,6 +34,9 @@ app.use((req, res, next) => {
 // --- НОВЫЙ ЭНДПОИНТ ДЛЯ АВТООБЗВОНА ---
 app.post('/api/autocall', async (req, res) => {
     try {
+        // --- ДОБАВЛЕНО ЛОГИРОВАНИЕ ---
+        console.log('Полученное тело запроса (req.body):', JSON.stringify(req.body, null, 2));
+
         const { phone_number, speech_text } = req.body;
         
         if (!phone_number || !speech_text) {
@@ -92,5 +95,8 @@ app.post('/api/autocall', async (req, res) => {
 const PORT_LISTEN = process.env.PORT || 3000;
 app.listen(PORT_LISTEN, '0.0.0.0', () => {
     console.log(`Zadarma микросервис запущен на порту ${PORT_LISTEN}`);
+    console.log(`API Key установлен: ${!!API_KEY}`);
+    console.log(`API Secret установлен: ${!!API_SECRET}`);
+    console.log(`CALLER_ID установлен: ${CALLER_ID}`);
 });
 
