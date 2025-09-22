@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { api } = require('zadarma');
 
-// --- Версия 2.1 ---
+// --- Версия 2.2 ---
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +17,7 @@ if (!API_KEY || !API_SECRET || !CALLER_ID) {
     process.exit(1);
 }
 
-// Настройка переменных окружения для модуля  zadarma
+// Настройка переменных окружения для модуля zadarma
 process.env.ZADARMA_USER_KEY = API_KEY;
 process.env.ZADARMA_SECRET_KEY = API_SECRET;
 
@@ -96,10 +96,10 @@ app.post('/api/autocall', async (req, res) => {
 
 const PORT_LISTEN = process.env.PORT || 3000;
 app.listen(PORT_LISTEN, '0.0.0.0', () => {
-    console.log(`Zadarma микросервис запущен на порту ${PORT_LISTEN}`);
+    // ДОБАВЛЕНА ВЕРСИЯ В ЛОГ
+    console.log(`Zadarma микросервис (Версия 2.2) запущен на порту ${PORT_LISTEN}`);
     console.log(`API Key установлен: ${!!API_KEY}`);
     console.log(`API Secret установлен: ${!!API_SECRET}`);
     console.log(`CALLER_ID установлен: ${CALLER_ID}`);
 });
-
 
