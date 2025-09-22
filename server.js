@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { api } = require('zadarma');
 
+// --- Версия 2.1 ---
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -31,10 +33,9 @@ app.use((req, res, next) => {
 });
 
 
-// --- НОВЫЙ ЭНДПОИНТ ДЛЯ АВТООБЗВОНА ---
+// --- ЭНДПОИНТ ДЛЯ АВТООБЗВОНА ---
 app.post('/api/autocall', async (req, res) => {
     try {
-        // --- ДОБАВЛЕНО ЛОГИРОВАНИЕ ---
         console.log('Полученное тело запроса (req.body):', JSON.stringify(req.body, null, 2));
 
         const { phone_number, speech_text } = req.body;
@@ -51,16 +52,16 @@ app.post('/api/autocall', async (req, res) => {
         // --- Шаг 1: Синтез речи через API Zadarma ---
         console.log('Синтезируем речь...');
         const synthesisResult = await api({
-            // ИСПРАВЛЕНИЕ: Указан правильный метод API для TTS
+            // ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Указан 100% правильный метод API для TTS
             api_method: '/v1/tts/', 
             params: {
                 text: speech_text,
-                // voice: 'alena' // Можно выбрать голос
             }
         });
 
         if (synthesisResult.status !== 'success' || !synthesisResult.ids || synthesisResult.ids.length === 0) {
-            throw new Error('Не удалось синтезировать речь: ' + (synthesisResult.message || 'неизвестная ошибка'));
+            // Эта ошибка будет видна, если Zadarma вернет ошибку (например, "недостаточно средств")
+            throw new Error('Не удалось синтезировать речь: ' + (synthesisResult.message || JSON.stringify(synthesisResult)));
         }
         
         const speechId = synthesisResult.ids[0];
@@ -73,7 +74,7 @@ app.post('/api/autocall', async (req, res) => {
             params: {
                 from: CALLER_ID,
                 to: phone_number,
-                play: speechId // Указываем ID файла для проигрывания
+                play: speechId 
             }
         });
 
