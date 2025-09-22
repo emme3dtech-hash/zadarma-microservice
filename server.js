@@ -17,7 +17,7 @@ if (!API_KEY || !API_SECRET || !CALLER_ID) {
     process.exit(1);
 }
 
-// Настройка переменных окружения для модуля zadarma
+// Настройка переменных окружения для модуля  zadarma
 process.env.ZADARMA_USER_KEY = API_KEY;
 process.env.ZADARMA_SECRET_KEY = API_SECRET;
 
@@ -101,4 +101,5 @@ app.listen(PORT_LISTEN, '0.0.0.0', () => {
     console.log(`API Secret установлен: ${!!API_SECRET}`);
     console.log(`CALLER_ID установлен: ${CALLER_ID}`);
 });
+
 
