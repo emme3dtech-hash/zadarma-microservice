@@ -3,11 +3,12 @@ const cors = require('cors');
 const { api } = require('zadarma');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Получение API ключей из переменных окружения
+// --- НАСТРОЙКА ---
 const API_KEY = process.env.API_KEY;
 const API_SECRET = process.env.API_SECRET;
+// РЕКОМЕНДАЦИЯ: Укажите ваш CallerID по умолчанию в переменных окружения на Railway
+const DEFAULT_CALLER_ID = process.env.DEFAULT_CALLER_ID; 
 
 if (!API_KEY || !API_SECRET) {
     console.error('API_KEY и API_SECRET должны быть установлены в переменных окружения');
@@ -29,57 +30,22 @@ app.use((req, res, next) => {
     next();
 });
 
+// --- РОУТЫ ---
+
 // Главная страница
 app.get('/', (req, res) => {
     res.json({
         status: 'success',
         message: 'Zadarma Microservice запущен!',
-        version: '1.0.0',
-        endpoints: {
-            balance: 'GET /api/balance',
-            callback: 'POST /api/callback',
-            health: 'GET /health'
-        }
+        version: '1.1.0 (Исправлено)',
     });
-});
-
-// Проверка здоровья сервиса
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'OK',
-        timestamp: new Date().toISOString(),
-        api_key_set: !!API_KEY,
-        api_secret_set: !!API_SECRET
-    });
-});
-
-// Получить баланс
-app.get('/api/balance', async (req, res) => {
-    try {
-        console.log('Запрос баланса...');
-        const result = await api({
-            api_method: '/v1/info/balance/'
-        });
-        
-        res.json({
-            status: 'success',
-            data: result,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Ошибка получения баланса:', error.message);
-        res.status(500).json({
-            status: 'error',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
-    }
 });
 
 // Инициировать обратный звонок
 app.post('/api/callback', async (req, res) => {
     try {
-        const { phone_number, contact_name } = req.body;
+        // ИЗМЕНЕНИЕ: Получаем 'from_number' из тела запроса
+        const { phone_number, from_number, contact_name } = req.body;
         
         if (!phone_number) {
             return res.status(400).json({
@@ -87,11 +53,24 @@ app.post('/api/callback', async (req, res) => {
                 message: 'Не указан номер телефона (phone_number)'
             });
         }
-
-        console.log(`Инициация обратного звонка на ${phone_number}`);
         
+        // ИЗМЕНЕНИЕ: Определяем, какой номер использовать для CallerID
+        // Если from_number передан из n8n - используем его.
+        // Если нет - используем номер по умолчанию из переменных окружения.
+        const callerId = from_number || DEFAULT_CALLER_ID;
+
+        if (!callerId) {
+             return res.status(400).json({
+                status: 'error',
+                message: 'Не указан номер для совершения звонка (from_number) и не задан DEFAULT_CALLER_ID'
+            });
+        }
+
+        console.log(`Инициация обратного звонка с ${callerId} на ${phone_number}`);
+        
+        // ИСПРАВЛЕНИЕ: Используем динамический callerId
         const params = {
-            from: '380914911639',
+            from: callerId,
             to: phone_number
         };
         
@@ -102,13 +81,13 @@ app.post('/api/callback', async (req, res) => {
         
         res.json({
             status: 'success',
-            message: `Обратный звонок инициирован на номер ${phone_number}`,
+            message: `Обратный звонок инициирован с ${callerId} на номер ${phone_number}`,
             contact_name: contact_name || 'Неизвестен',
             data: result,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('Ошибка обратного звонка:', error.message);
+        console.error('Ошибка обратного звонка:', error.message, error);
         res.status(500).json({
             status: 'error',
             message: error.message,
@@ -122,4 +101,5 @@ app.listen(PORT_LISTEN, '0.0.0.0', () => {
     console.log(`Zadarma микросервис запущен на порту ${PORT_LISTEN}`);
     console.log(`API Key установлен: ${!!API_KEY}`);
     console.log(`API Secret установлен: ${!!API_SECRET}`);
+    console.log(`CallerID по умолчанию: ${DEFAULT_CALLER_ID || 'Не задан'}`);
 });
