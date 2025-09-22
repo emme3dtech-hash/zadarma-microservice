@@ -51,7 +51,8 @@ app.post('/api/autocall', async (req, res) => {
         // --- Шаг 1: Синтез речи через API Zadarma ---
         console.log('Синтезируем речь...');
         const synthesisResult = await api({
-            api_method: '/v1/speech/',
+            // ИСПРАВЛЕНИЕ: Указан правильный метод API для TTS
+            api_method: '/v1/tts/', 
             params: {
                 text: speech_text,
                 // voice: 'alena' // Можно выбрать голос
