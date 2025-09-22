@@ -54,7 +54,7 @@ app.post('/api/callback', async (req, res) => {
         
         const params = {
             // ИСПРАВЛЕНИЕ: Указан ваш корректный, подтвержденный номер для звонков
-            from: '3809491839', 
+            from: '0914911639', 
             to: phone_number
         };
         
@@ -86,4 +86,5 @@ app.listen(PORT_LISTEN, '0.0.0.0', () => {
     console.log(`API Key установлен: ${!!API_KEY}`);
     console.log(`API Secret установлен: ${!!API_SECRET}`);
 });
+
 
